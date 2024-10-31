@@ -1,0 +1,17 @@
+export const colors = [
+    {"name": "Pink", "hex": "#FFC0CB"},
+    {"name": "Lavender", "hex": "#E6E6FA"},
+    {"name": "Light Blue", "hex": "#ADD8E6"},
+    {"name": "Mint Green", "hex": "#98FF98"},
+    {"name": "Peach", "hex": "#FFE5B4"},
+    {"name": "Coral", "hex": "#FF7F50"},
+    {"name": "Lilac", "hex": "#C8A2C8"},
+    {"name": "Salmon", "hex": "#FA8072"},
+    {"name": "Mauve", "hex": "#E0B0FF"},
+    {"name": "Sky Blue", "hex": "#87CEEB"},
+    {"name": "Baby Blue", "hex": "#89CFF0"},
+    {"name": "Rose Gold", "hex": "#B76E79"},
+    {"name": "Turquoise", "hex": "#40E0D0"},
+    {"name": "Champagne", "hex": "#F7E7CE"},
+    {"name": "Blush", "hex": "#DE5D83"},
+];
