@@ -8,6 +8,7 @@ import { sp2Category3 } from '../../../data/category/level3/sp2Category3'
 import { sp3Category3 } from '../../../data/category/level3/sp3Category3'
 import { sp4Category3 } from '../../../data/category/level3/sp4Category3'
 import { Box } from '@mui/material'
+import {useNavigate} from "react-router-dom";
 
 const CategoryTwo: {[key:string] : any[]} = {
     Sanpham1:sp1Category2,
@@ -27,6 +28,8 @@ const CategorySheet = ({selectedCategory, setShowSheet}:any) => {
     const childCategory = (category : any, parentCategoryId: any) => {
         return category.filter((child : any) => child.parentCategoryId === parentCategoryId);
     }
+
+    const navigate=useNavigate();
   return (
     <div>
         <Box sx={{zIndex: 2}}>
@@ -40,7 +43,7 @@ const CategorySheet = ({selectedCategory, setShowSheet}:any) => {
                         {
                             childCategory(CategoryThree[selectedCategory], item.categoryId).map((item: any) => (
                                 <div>
-                                    <li className='hover:text-primary-color cursor-pointer'>{item.name}</li>
+                                    <li onClick={() => navigate("/products/" + item.categoryId)} className='hover:text-primary-color cursor-pointer'>{item.name}</li>
                                 </div>
                             ))
                         }

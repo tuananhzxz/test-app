@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import CartItem from "./CartItem";
 import PricingCard from "./PricingCard";
+import {useNavigate} from "react-router-dom";
 
 const Cart = () => {
     const [couponCode, setCouponCode] = useState('');
     const [discount, setDiscount] = useState(0);
     const subtotal = 1000000;
     const shipping = 30000;
+    const navigate = useNavigate();
 
     const handleApplyCoupon = () => {
         if (couponCode === 'DISCOUNT10') {
@@ -50,7 +52,7 @@ const Cart = () => {
                         <div><PricingCard/></div>
 
                         {/* Checkout Button */}
-                        <button className="w-full bg-red-500 text-white py-3 rounded-md mt-4 hover:bg-red-600">
+                        <button onClick={() => navigate("/checkout")} className="w-full bg-red-500 text-white py-3 rounded-md mt-4 hover:bg-red-600">
                             Thanh toán
                         </button>
                     </div>
