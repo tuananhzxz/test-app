@@ -110,3 +110,21 @@ export const loginSeller = createAsyncThunk<
     }
   }
 );
+
+export const logout = createAsyncThunk<any, any>("/auth/logout",
+  async (navigate, { rejectWithValue }) => {
+    try {
+      localStorage.clear();
+      navigate('/');
+      return {
+        success: true,
+        message: 'Logout successful'
+      };
+    } catch (error: any) {
+      return rejectWithValue({
+        success: false,
+        message: error.response?.data?.message || 'Logout failed'
+      });
+    }
+  }
+)

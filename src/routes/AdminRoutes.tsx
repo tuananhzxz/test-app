@@ -8,6 +8,7 @@ import CategoryOneAdmin from '../admin/pages/homepages/CategoryOneAdmin'
 import ShopByCategoryTable from '../admin/pages/homepages/ShopByCategoryTable'
 import DealAdmin from '../admin/pages/homepages/DealAdmin'
 import HomeCategory from '../admin/pages/homepages/HomeCategory'
+import { HomeCategorySection } from '../types/HomeCategoryType'
 
 const AdminRoutes = () => {
   return (
@@ -15,7 +16,7 @@ const AdminRoutes = () => {
 
         <Route path='/' element={<SellerTableAdmin/>}/>
         <Route path='/coupon' element={<CouponAdmin/>}/>
-        <Route path='/category2' element={<HomeCategory/>}/>
+        <Route path='/category2' element={<HomeCategory section={HomeCategorySection.DEALS}/>}/>
         <Route path='/add/coupon' element={<AddNewCoupon/>}/>
         <Route path='/home/grid' element={<GridTable/>}/>
         <Route path='/category1' element={<CategoryOneAdmin/>}/>

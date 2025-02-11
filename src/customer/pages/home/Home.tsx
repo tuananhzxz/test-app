@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import OneCategory from './categoryOne/OneCategory';
 import CategoryGrid from './categoryGrid/CategoryGrid';
 import Deal from './deal/Deal';
@@ -6,8 +6,23 @@ import ShopByCategory from './shopbycategory/ShopByCategory';
 import { Button } from '@mui/material';
 import { ShoppingBag, Store, ArrowForward, TrendingUp, Security, Support } from '@mui/icons-material';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../../state/Store';
+import { getHomeCategories } from '../../../state/admin/HomeCategorySlice';
+import SmartChatBot from './chatbot/SmartBot';
+import { getProducts } from '../../../state/customer/ProductCustomerSlice';
 
 const Home = () => {
+  const navigate = useNavigate();
+  const dispath = useAppDispatch();
+  const products = useAppSelector((state) => state.product.products);
+
+  const { homeCategorySlice } = useAppSelector((state) => state);
+
+  useEffect(() => {
+    dispath(getHomeCategories());
+    dispath(getProducts());
+  }, [dispath]);
   const features = [
     {
       icon: <Store className="text-blue-400" sx={{ fontSize: 32 }}/>,
@@ -40,7 +55,7 @@ const Home = () => {
         className="relative overflow-hidden"
       >
         <div className="py-6 lg:py-8">
-          <OneCategory />
+          <OneCategory item={homeCategorySlice.categories} />
         </div>
 
         <motion.div 
@@ -49,7 +64,7 @@ const Home = () => {
           transition={{ delay: 0.2 }}
           className="py-12 lg:py-16"
         >
-          <CategoryGrid />
+          <CategoryGrid item={homeCategorySlice.categories}/>
         </motion.div>
 
         <div className="py-16 lg:py-20 bg-gradient-to-r from-blue-50 to-purple-50">
@@ -57,7 +72,7 @@ const Home = () => {
         </div>
 
         <div className="py-12 lg:py-16 bg-white">
-          <ShopByCategory />
+          <ShopByCategory item={homeCategorySlice.categories}/>
         </div>
 
         <section className="relative min-h-[600px] lg:min-h-[700px] overflow-hidden">
@@ -97,6 +112,7 @@ const Home = () => {
 
                 <div className="flex items-center space-x-4">
                   <Button 
+                    onClick={() => navigate(`/become/seller`)}
                     size="large" 
                     variant="contained"
                     className="bg-white text-blue-900 hover:bg-red-500 transition-all duration-300 px-8 py-3 rounded-full text-lg shadow-lg"
@@ -156,6 +172,7 @@ const Home = () => {
           </svg>
         </motion.button>
       </motion.div>
+      <SmartChatBot products={products} />
     </div>
   );
 };

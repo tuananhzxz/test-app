@@ -6,7 +6,7 @@ const BankDetails = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         accountNumber: '1234567890',
-        accountHolder: 'Tuan Anh',
+        accountHolderName: 'Tuan Anh',
         bankName: 'Vietcombank',
         branchName: 'Hà Nội',
         code: '100000'
@@ -73,8 +73,8 @@ const BankDetails = () => {
                             </label>
                             <input
                                 type="text"
-                                value={formData.accountHolder}
-                                onChange={(e) => setFormData({...formData, accountHolder: e.target.value})}
+                                value={formData.accountHolderName}
+                                onChange={(e) => setFormData({...formData, accountHolderName: e.target.value})}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             />
                         </div>

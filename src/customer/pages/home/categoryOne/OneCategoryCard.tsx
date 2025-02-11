@@ -1,7 +1,8 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import { HomeCategoryType } from '../../../../types/HomeCategoryType';
 
-const OneCategoryCard = ({ image = "https://cdn.tgdd.vn/Products/Images/44/231244/grey-1-750x500.jpg", title = "MACBOOK" }) => {
+const OneCategoryCard = ({ category } : { category : HomeCategoryType}) => {
   return (
     <Box
       className="group cursor-pointer p-3 rounded-lg transition-all duration-300 hover:bg-gray-50"
@@ -40,8 +41,8 @@ const OneCategoryCard = ({ image = "https://cdn.tgdd.vn/Products/Images/44/23124
       >
         <img
           className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
-          src={image}
-          alt={title}
+          src={category.image}
+          alt={category.name}
           loading="lazy"
         />
       </Box>
@@ -57,7 +58,7 @@ const OneCategoryCard = ({ image = "https://cdn.tgdd.vn/Products/Images/44/23124
           whiteSpace: 'nowrap',
         }}
       >
-        {title}
+        {category.name}
       </Typography>
     </Box>
   );

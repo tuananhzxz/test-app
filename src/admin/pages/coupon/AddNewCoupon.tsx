@@ -8,25 +8,28 @@ import {
   Stack,
   InputAdornment,
   Alert,
-  Container
+  Container,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/vi';
 import { useFormik } from 'formik';
 import * as yup from 'yup';
 import { Save, Close } from '@mui/icons-material';
 import dayjs from 'dayjs';
+import { useAppDispatch, useAppSelector } from '../../../state/Store';
+import { createCoupon } from '../../../state/admin/CouponAdmin';
+import { toast } from 'react-toastify';
+
 
 interface FormValues {
-    code: string;
-    discountPercent: string;
-    minimumAmount: string;
-    startDate: dayjs.Dayjs | null;
-    endDate: dayjs.Dayjs | null;
-  }
+  code: string;
+  discountPercent: string;
+  minimumAmount: string;
+  startDate: dayjs.Dayjs | null;
+  endDate: dayjs.Dayjs | null;
+}
 
 const validationSchema = yup.object({
   code: yup
@@ -54,6 +57,9 @@ const validationSchema = yup.object({
 });
 
 const AddNewCoupon = () => {
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state) => state.couponAdmin);
+
   const formik = useFormik<FormValues>({
     initialValues: {
       code: '',
@@ -63,8 +69,22 @@ const AddNewCoupon = () => {
       endDate: null,
     },
     validationSchema: validationSchema,
-    onSubmit: (values) => {
-      console.log('Form submitted:', values);
+    onSubmit: async (values) => {
+      const couponData = {
+        code: values.code,
+        discountPercentage: Number(values.discountPercent),
+        minimumOrderValue: Number(values.minimumAmount),
+        validityStartDate: values.startDate?.toISOString() || '',
+        validityEndDate: values.endDate?.toISOString() || '',
+        isActive: true,
+      };
+      try {
+        await dispatch(createCoupon(couponData)).unwrap();
+        toast.success('Thêm mã giảm giá thành công!');
+        formik.resetForm();
+      } catch (err) {
+        toast.error('Thêm mã giảm giá thất bại. Vui lòng thử lại!');
+      }
     },
   });
 
@@ -76,6 +96,8 @@ const AddNewCoupon = () => {
             <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ mb: 4 }}>
               Thêm mã giảm giá mới
             </Typography>
+
+            {error && <Alert severity="error">{error}</Alert>}
 
             <form onSubmit={formik.handleSubmit}>
               <Stack spacing={3}>
@@ -90,7 +112,7 @@ const AddNewCoupon = () => {
                   helperText={formik.touched.code && formik.errors.code}
                   placeholder="VD: SUMMER2024"
                   InputProps={{
-                    sx: { textTransform: 'uppercase' }
+                    sx: { textTransform: 'uppercase' },
                   }}
                 />
 
@@ -133,8 +155,7 @@ const AddNewCoupon = () => {
                       textField: {
                         fullWidth: true,
                         error: formik.touched.startDate && Boolean(formik.errors.startDate),
-                        helperText: formik.touched.startDate && (formik.errors.startDate as string),
-                        onBlur: () => formik.setFieldTouched('startDate', true)
+                        helperText: formik.touched.startDate && formik.errors.startDate,
                       },
                     }}
                     minDate={dayjs()}
@@ -148,8 +169,7 @@ const AddNewCoupon = () => {
                       textField: {
                         fullWidth: true,
                         error: formik.touched.endDate && Boolean(formik.errors.endDate),
-                        helperText: formik.touched.endDate && (formik.errors.endDate as string),
-                        onBlur: () => formik.setFieldTouched('endDate', true)
+                        helperText: formik.touched.endDate && formik.errors.endDate,
                       },
                     }}
                     minDate={formik.values.startDate || dayjs()}
@@ -164,7 +184,7 @@ const AddNewCoupon = () => {
                       <strong>
                         {new Intl.NumberFormat('vi-VN', {
                           style: 'currency',
-                          currency: 'VND'
+                          currency: 'VND',
                         }).format(Number(formik.values.minimumAmount) || 0)}
                       </strong>
                     </Typography>
@@ -183,9 +203,9 @@ const AddNewCoupon = () => {
                     type="submit"
                     variant="contained"
                     startIcon={<Save />}
-                    disabled={!formik.isValid || formik.isSubmitting}
+                    disabled={!formik.isValid || formik.isSubmitting || loading}
                   >
-                    Lưu
+                    {loading ? 'Đang lưu...' : 'Lưu'}
                   </Button>
                 </Stack>
               </Stack>

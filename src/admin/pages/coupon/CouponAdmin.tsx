@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Paper,
@@ -20,73 +20,52 @@ import {
   Button,
   Alert,
   Snackbar,
+  CircularProgress,
+  TextField,
 } from '@mui/material';
 import {
   Delete,
   CheckCircle,
   TimerOff,
-  Warning
+  Warning,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useAppDispatch } from '../../../state/Store';
+import { useAppSelector } from '../../../state/Store';
+import { deleteCoupon, fetchAllCoupons } from '../../../state/admin/CouponAdmin';
 
-type CouponStatus = 'ACTIVE' | 'EXPIRED';
 
-interface Coupon {
-  id: string;
-  code: string;
-  startDate: Date;
-  endDate: Date;
-  minimumAmount: number;
-  discountPercentage: number;
-  status: CouponStatus;
-}
-
-const statusConfig = {
-  ACTIVE: {
+const statusConfig: Record<string, { label: string; color: 'success' | 'error'; icon: React.ElementType }> = {
+  true: {
     label: 'Đang hoạt động',
-    color: 'success' as const,
-    icon: CheckCircle
+    color: 'success',
+    icon: CheckCircle,
   },
-  EXPIRED: {
+  false: {
     label: 'Hết hạn',
-    color: 'error' as const,
-    icon: TimerOff
-  }
+    color: 'error',
+    icon: TimerOff,
+  },
 };
 
-// Mock data
-const mockCoupons: Coupon[] = [
-  {
-    id: '1',
-    code: 'SUMMER2024',
-    startDate: new Date('2024-06-01'),
-    endDate: new Date('2024-08-31'),
-    minimumAmount: 1000000,
-    discountPercentage: 15,
-    status: 'ACTIVE'
-  },
-  {
-    id: '2',
-    code: 'SPRING2024',
-    startDate: new Date('2024-03-01'),
-    endDate: new Date('2024-05-31'),
-    minimumAmount: 500000,
-    discountPercentage: 10,
-    status: 'EXPIRED'
-  },
-  // Thêm mock data khác...
-];
-
 const CouponAdmin = () => {
-  const [selectedStatus, setSelectedStatus] = useState<CouponStatus | 'ALL'>('ALL');
+  const dispatch = useAppDispatch();
+  const { coupons, loading, error } = useAppSelector((state) => state.couponAdmin);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<boolean | 'ALL'>('ALL');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedCoupon, setSelectedCoupon] = useState<string | null>(null);
+  const [selectedCoupon, setSelectedCoupon] = useState<number | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
-  const handleStatusFilter = (status: CouponStatus | 'ALL') => {
+  useEffect(() => {
+    dispatch(fetchAllCoupons());
+  }, [dispatch]);
+
+  const handleStatusFilter = (status: boolean | 'ALL') => {
     setSelectedStatus(status);
     setPage(0);
   };
@@ -100,21 +79,44 @@ const CouponAdmin = () => {
     setPage(0);
   };
 
-  const handleDeleteClick = (couponId: string) => {
+  const handleDeleteClick = (couponId: number) => {
     setSelectedCoupon(couponId);
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = () => {
-    // Xử lý xóa coupon
-    console.log('Deleting coupon:', selectedCoupon);
+    if (selectedCoupon !== null) {
+      dispatch(deleteCoupon(selectedCoupon))
+        .unwrap()
+        .then(() => {
+          setSnackbarOpen(true);
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    }
     setDeleteDialogOpen(false);
-    setSnackbarOpen(true);
   };
 
-  const filteredCoupons = selectedStatus === 'ALL'
-    ? mockCoupons
-    : mockCoupons.filter(coupon => coupon.status === selectedStatus);
+  const filteredCoupons = coupons
+  .filter((coupon) =>
+    selectedStatus === 'ALL' ? true : coupon.isActive === selectedStatus
+  )
+  .filter((coupon) =>
+    coupon.code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return <Alert severity="error">{error}</Alert>;
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -122,6 +124,17 @@ const CouponAdmin = () => {
       <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ mb: 3 }}>
         Quản lý mã giảm giá
       </Typography>
+
+      <TextField
+        label="Tìm kiếm mã giảm giá"
+        variant="outlined"
+        size="small"
+        fullWidth
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Nhập mã giảm giá..."
+        sx={{ mb: 3 }}
+      />
 
       {/* Status Filter */}
       <Paper elevation={0} sx={{ p: 2, mb: 3, backgroundColor: '#f8fafc' }}>
@@ -137,11 +150,12 @@ const CouponAdmin = () => {
           >
             Tất cả
           </Button>
-          {(Object.keys(statusConfig) as CouponStatus[]).map((status) => {
-            const { label, color, icon: Icon } = statusConfig[status];
+          {['true', 'false'].map((key) => {
+            const status = key === 'true';
+            const { label, color, icon: Icon } = statusConfig[key];
             return (
               <Chip
-                key={status}
+                key={key}
                 label={label}
                 icon={<Icon sx={{ fontSize: 16 }} />}
                 onClick={() => handleStatusFilter(status)}
@@ -176,7 +190,8 @@ const CouponAdmin = () => {
               {filteredCoupons
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((coupon) => {
-                  const StatusIcon = statusConfig[coupon.status].icon;
+                  const statusKey = coupon.isActive.toString();
+                  const StatusIcon = statusConfig[statusKey].icon;
                   return (
                     <TableRow key={coupon.id} hover>
                       <TableCell>
@@ -185,25 +200,23 @@ const CouponAdmin = () => {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        {format(coupon.startDate, 'dd/MM/yyyy', { locale: vi })}
+                        {format(new Date(coupon.validityStartDate), 'dd/MM/yyyy', { locale: vi })}
                       </TableCell>
                       <TableCell>
-                        {format(coupon.endDate, 'dd/MM/yyyy', { locale: vi })}
+                        {format(new Date(coupon.validityEndDate), 'dd/MM/yyyy', { locale: vi })}
                       </TableCell>
                       <TableCell align="right">
                         {new Intl.NumberFormat('vi-VN', {
                           style: 'currency',
-                          currency: 'VND'
-                        }).format(coupon.minimumAmount)}
+                          currency: 'VND',
+                        }).format(coupon.minimumOrderValue)}
                       </TableCell>
-                      <TableCell align="right">
-                        {coupon.discountPercentage}%
-                      </TableCell>
+                      <TableCell align="right">{coupon.discountPercentage}%</TableCell>
                       <TableCell>
                         <Chip
                           icon={<StatusIcon sx={{ fontSize: 16 }} />}
-                          label={statusConfig[coupon.status].label}
-                          color={statusConfig[coupon.status].color}
+                          label={statusConfig[statusKey].label}
+                          color={statusConfig[statusKey].color}
                           size="small"
                         />
                       </TableCell>
@@ -231,9 +244,7 @@ const CouponAdmin = () => {
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           labelRowsPerPage="Số hàng mỗi trang:"
-          labelDisplayedRows={({ from, to, count }) =>
-            `${from}-${to} của ${count}`
-          }
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} của ${count}`}
         />
       </Paper>
 
@@ -256,9 +267,7 @@ const CouponAdmin = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
-            Hủy
-          </Button>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
           <Button variant="contained" color="error" onClick={handleDeleteConfirm}>
             Xóa
           </Button>

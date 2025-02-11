@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useAppDispatch } from '../state/Store';
+import { logout } from '../state/seller/AuthSlice';
 
 interface SubMenuItem {
   name: string;
@@ -24,6 +26,12 @@ interface DrawerListProps {
 const DrawerList = ({ menu, menu2, toggleDrawer }: DrawerListProps) => {
   const location = useLocation();
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    dispatch(logout(navigate));
+    toggleDrawer();
+  };
 
   const toggleSubmenu = (menuName: string) => {
     setOpenSubmenu(openSubmenu === menuName ? null : menuName);
@@ -36,10 +44,20 @@ const DrawerList = ({ menu, menu2, toggleDrawer }: DrawerListProps) => {
     const hasSubmenu = item.subMenu && item.subMenu.length > 0;
     const isSubmenuOpen = openSubmenu === item.name;
 
+    const handleClick = () => {
+      if (hasSubmenu) {
+        toggleSubmenu(item.name);
+      } else if (item.name === "Đăng xuất") {
+        handleLogout();
+      } else {
+        toggleDrawer();
+      }
+    };
+
     return (
       <div>
         <div
-          onClick={() => hasSubmenu ? toggleSubmenu(item.name) : toggleDrawer()}
+          onClick={handleClick}
           className={`
             flex items-center px-4 py-2.5 text-sm font-medium
             transition-colors duration-200 rounded-lg mx-2 cursor-pointer
@@ -53,7 +71,7 @@ const DrawerList = ({ menu, menu2, toggleDrawer }: DrawerListProps) => {
             to={hasSubmenu ? '#' : item.path}
             className="flex items-center flex-1"
             onClick={(e) => {
-              if (hasSubmenu) {
+              if (hasSubmenu || item.name === "Đăng xuất") {
                 e.preventDefault();
               }
             }}
@@ -95,7 +113,7 @@ const DrawerList = ({ menu, menu2, toggleDrawer }: DrawerListProps) => {
                     }
                   `}
                 >
-                  <div className="w-5 h-5 mr-3" /> {/* Spacing to align with parent */}
+                  <div className="w-5 h-5 mr-3" />
                   <span>{subItem.name}</span>
                 </Link>
               );

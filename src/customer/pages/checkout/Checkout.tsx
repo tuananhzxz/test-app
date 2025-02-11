@@ -1,9 +1,16 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Box, Button, Modal} from "@mui/material";
 import AddressCard from "./AddressCard";
 import AddressForm from "./AddressForm";
-import PricingCard from "../cart/PricingCard";
 import {CreditCard, DollarSign} from "lucide-react";
+import { RootState, useAppDispatch } from '../../../state/Store';
+import { useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { createOrder, handlePaymentSuccess } from '../../../state/customer/OrderSlice';
+import { Address, User } from '../../../types/UserType';
+import { getUserProfile } from '../../../state/customer/AuthSliceCus';
+import { toast } from 'react-toastify';
+
 const style = {
     position: 'absolute',
     top: '50%',
@@ -13,22 +20,59 @@ const style = {
     borderRadius: 2
 };
 const Checkout = () => {
+    const dispatch = useAppDispatch();
+    const location = useLocation();
     const [open, setOpen] = React.useState(false);
     const handleOpen = () => setOpen(true);
+    const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+    const [addresses, setAddresses] = useState<Address[]>([]);
+    const { paymentSuccess, error } = useSelector((state: RootState) => state.order);
     const handleClose = () => setOpen(false);
 
     const [selectedMethod, setSelectedMethod] = useState('');
 
+    useEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const paymentId = searchParams.get('payment_id');
+        const paymentLinkId = searchParams.get('payment_link_id');
+
+        if (paymentId && paymentLinkId) {
+            dispatch(handlePaymentSuccess({ paymentId, paymentLinkId }));
+        }
+        dispatch(getUserProfile(localStorage.getItem('token') || '')).then((user : any) => {
+            setAddresses(user.payload.addresses);
+        });
+    }, [location, dispatch]);
+
+    const handleConfirmPayment = () => {
+        if (!selectedMethod) {
+            toast.error('Vui lòng chọn phương thức thanh toán');
+            return;
+        }
+        dispatch(createOrder({
+            shippingAddress : selectedAddress || addresses[0],
+            paymentMethod: selectedMethod
+        })).then((res : any) => {
+            toast.success('Đơn hàng đã được tạo thành công');
+            if (res.payload?.payment_link_url) {
+                window.location.href = res.payload.payment_link_url;
+            }
+            setOpen(false);
+        }).catch((err : any) => {
+            toast.error(err.payload.message);
+        });
+    };
+
     const paymentMethods = [
         {
-            id: 'razorpay',
+            id: 'RAZORPAY',
             icon: <CreditCard className="w-5 h-5" />,
             name: 'Razorpay',
             value: "RAZORPAY",
             description: 'Thanh toán an toàn qua Razorpay'
         },
         {
-            id: 'stripe',
+            id: 'STRIPE',
             icon: <DollarSign className="w-5 h-5" />,
             name: 'Stripe',
             value: "STRIPE",
@@ -50,9 +94,20 @@ const Checkout = () => {
 
                         <div className={`text-xs font-medium space-y-5`}>
                             <p>Địa chỉ đã lưu</p>
-                            <div className={`space-y-5`}>
-                                {[...Array(3)].map((_, index) => <AddressCard/>)}
-                            </div>
+                            <div className="space-y-5">
+                            {addresses && addresses.length > 0 ? (
+                                addresses.map((address, index) => (
+                                    <AddressCard
+                                        key={index}
+                                        address={address}
+                                        isSelected={selectedAddress?.id === address.id}
+                                        onSelect={setSelectedAddress}
+                                    />
+                                ))
+                            ) : (
+                                <p className="text-gray-500">Không có địa chỉ nào được lưu</p>
+                            )}
+                        </div>
                         </div>
 
                         <div className={`py-4 px-5 rounded-md border`}>
@@ -105,11 +160,12 @@ const Checkout = () => {
                             ))}
                         </div>
 
-                        <PricingCard/>
+                        {/* <PricingCard/> */}
 
                         <div className="pt-2 border-t">
                         <button
                             className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                            onClick={handleConfirmPayment}
                         >
                             Xác nhận thanh toán
                         </button>
@@ -126,7 +182,7 @@ const Checkout = () => {
                 aria-describedby="modal-modal-description"
             >
                 <Box sx={style}>
-                    <AddressForm onClose={handleClose}/>
+                    <AddressForm onClose={handleClose} paymentMethod={selectedMethod === 'RAZORPAY' ? 'RAZORPAY' : 'STRIPE'}/>
                 </Box>
             </Modal>
         </>

@@ -15,12 +15,6 @@ export interface ProductSeller {
     seller? : ProfileSeller;
     createdDate: string;
     sizes: string;
-    reviews: {
-      id: number;
-      content: string;
-      rating: number;
-      createdDate: string; 
-    }[];
   }
 
   interface Category {

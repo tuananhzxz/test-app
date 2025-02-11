@@ -29,11 +29,10 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('sellerToken');
-    console.log("Token:", token); // Check if token exists
     if (token) {
       dispatch(fetchSellerProfile(token))
         .then((response) => {
-          console.log("Profile Response:", response); // Log the response
+          console.log("Profile Response:", response);
         })
         .catch((error) => {
           console.error("Profile Error:", error); // Log any errors
@@ -198,7 +197,7 @@ const Profile: React.FC = () => {
           "Thông tin ngân hàng",
           [
             { label: "Thông tin ngân hàng", value: profile?.bankDetails?.accountNumber || 'Chưa cập nhật' },
-            { label: "Chủ tài khoản", value: profile?.bankDetails?.accountHolder || 'Chưa cập nhật' }
+            { label: "Chủ tài khoản", value: profile?.bankDetails?.accountHolderName || 'Chưa cập nhật' }
           ],
           () => setOpenBank(true)
         )}

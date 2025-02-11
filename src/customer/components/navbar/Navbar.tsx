@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Search, 
     Favorite, 
@@ -7,22 +7,51 @@ import {
     Menu,
     PersonOutline 
 } from '@mui/icons-material';
-import { Avatar, Box, Button, IconButton, useMediaQuery, useTheme, Tooltip } from '@mui/material';
+import { Avatar, Box, Button, IconButton, useMediaQuery, useTheme, Tooltip, Badge } from '@mui/material';
+import { useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from '../../../state/Store';
 import CategorySheet from './CategorySheet';
 import { mainCategory } from '../../../data/category/mainCategory';
-import { useNavigate } from "react-router-dom";
+import { logout } from '../../../state/customer/AuthSliceCus';
+import { getUserCart } from '../../../state/customer/CartSlice';
+import SearchComponent from '../../pages/product/SearchComponent';
 
 const Navbar = () => {
     const theme = useTheme();
+    const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const isLarge = useMediaQuery(theme.breakpoints.up('lg'));
     const [selectedCategory, setSelectedCategory] = useState('Sanpham1');
     const [showSheet, setShowSheet] = useState(false);
-    const navigate = useNavigate();
+
+    const { user, jwt, User_Role } = useAppSelector(state => state.auth);
+    const cart = useAppSelector(state => state.cart);
+    const isAuthenticated = !!jwt;
+
+    useEffect(() => {
+        if (jwt) {
+            dispatch(getUserCart());
+        }
+    }, [jwt, dispatch]);
+
+    const handleLogout = () => {
+        dispatch(logout());
+        navigate('/');
+    };
+
+    const handleProfileClick = () => {
+        if (isAuthenticated) {
+            navigate('/account/order');
+        } else {
+            navigate('/login-user');
+        }
+    };
 
     return (
         <Box className="sticky top-0 left-0 right-0 bg-white shadow-sm" sx={{ zIndex: 2 }}>
             <div className="max-w mx-auto">
                 <div className="flex items-center justify-between px-4 h-16 lg:h-20">
+                    {/* Left Section - Logo */}
                     <div className="flex items-center gap-4">
                         {!isLarge && (
                             <IconButton className="hover:rotate-90 transition-all duration-300">
@@ -43,7 +72,7 @@ const Navbar = () => {
                         </div>
                     </div>
 
-                    {/* Center Section */}
+                    {/* Center Section - Categories */}
                     <div className="hidden lg:flex">
                         <ul className="flex items-center space-x-1">
                             {mainCategory.map((item) => (
@@ -67,15 +96,16 @@ const Navbar = () => {
 
                     {/* Right Section */}
                     <div className="flex items-center space-x-2 lg:space-x-4">
-                        <Tooltip title="Tìm kiếm">
+                        {/* <Tooltip title="Tìm kiếm">
                             <IconButton className="hover:bg-gray-100 transition-colors">
                                 <Search />
                             </IconButton>
-                        </Tooltip>
+                        </Tooltip> */}
+                        <SearchComponent />
 
                         <Tooltip title="Yêu thích">
                             <IconButton className="hover:bg-gray-100 transition-colors">
-                                <Favorite />
+                                <Favorite onClick={() => navigate("/wishlist")} />
                             </IconButton>
                         </Tooltip>
 
@@ -84,11 +114,13 @@ const Navbar = () => {
                                 onClick={() => navigate("/cart")}
                                 className="hover:bg-gray-100 transition-colors"
                             >
-                                <ShoppingBag />
+                                <Badge badgeContent={cart?.cart?.cartItems.length || 0} color="primary">
+                                    <ShoppingBag />
+                                </Badge>
                             </IconButton>
                         </Tooltip>
 
-                        {isLarge && (
+                        {isLarge && isAuthenticated && User_Role !== "ROLE_SELLER" && (
                             <Button
                                 variant="outlined"
                                 startIcon={<Store />}
@@ -107,34 +139,63 @@ const Navbar = () => {
                             </Button>
                         )}
 
-                        {true ? (
-                            <Button
-                                onClick={() => navigate("/account/order")}
-                                className="min-w-0"
-                                sx={{ 
-                                    borderRadius: '8px',
-                                    '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
-                                }}
-                            >
-                                <div className="flex items-center space-x-2">
-                                    <Avatar
-                                        sx={{
-                                            width: 32,
-                                            height: 32,
-                                            border: '2px solid',
-                                            borderColor: 'primary.main'
-                                        }}
-                                    >
-                                        <PersonOutline />
-                                    </Avatar>
-                                    {isLarge && (
-                                        <span className="font-medium">Tanhzxz</span>
-                                    )}
+                        {/* Profile/Login Button */}
+                        {isAuthenticated ? (
+                            <div className="relative group">
+                                <Button
+                                    onClick={handleProfileClick}
+                                    className="min-w-0"
+                                    sx={{ 
+                                        borderRadius: '8px',
+                                        '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <Avatar
+                                            // src={user?.avatar}
+                                            sx={{
+                                                width: 32,
+                                                height: 32,
+                                                border: '2px solid',
+                                                borderColor: 'primary.main'
+                                            }}
+                                        >
+                                            <PersonOutline />
+                                        </Avatar>
+                                        {isLarge && (
+                                            <span className="font-medium">{user?.fullName}</span>
+                                        )}
+                                    </div>
+                                </Button>
+
+                                {/* Dropdown Menu */}
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                                    <div className="py-1">
+                                        <button 
+                                            onClick={() => navigate('/account/profile')}
+                                            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                            Tài khoản của tôi
+                                        </button>
+                                        <button 
+                                            onClick={() => navigate('/account/order')}
+                                            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                            Đơn hàng
+                                        </button>
+                                        <button 
+                                            onClick={handleLogout}
+                                            className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
+                                        >
+                                            Đăng xuất
+                                        </button>
+                                    </div>
                                 </div>
-                            </Button>
+                            </div>
                         ) : (
                             <Button
                                 variant="contained"
+                                onClick={() => navigate('/login-user')}
                                 sx={{
                                     borderRadius: '8px',
                                     textTransform: 'none'

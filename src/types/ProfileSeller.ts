@@ -20,7 +20,7 @@ interface BusinessDetails {
   
   interface BankDetails {
     accountNumber?: string;
-    accountHolder?: string;
+    accountHolderName?: string;
   }
   
   export interface ProfileSeller {

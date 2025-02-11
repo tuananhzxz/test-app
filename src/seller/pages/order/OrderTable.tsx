@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -11,59 +11,23 @@ import {
   MenuItem,
   Chip,
   Avatar,
-  SelectChangeEvent,
+  CircularProgress,
+  TextField,
+  TablePagination,
+  InputAdornment,
 } from '@mui/material';
-
-type OrderStatus = 'PENDING' | 'PLACED' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
-
-interface Product {
-  image: string;
-  title: string;
-  price: number;
-  color: string;
-  shipping: string;
-}
-
-interface Delivery {
-  name: string;
-  address: string;
-  phone: string;
-}
-
-interface Order {
-  id: string;
-  product: Product;
-  delivery: Delivery;
-  status: OrderStatus;
-  createdAt: string;
-}
-
-const orderData: Order[] = [
-  {
-    id: "DH001",
-    product: {
-      image: "https://i.guim.co.uk/img/media/31e8a4f29cfa05815a0554102be993d41075828a/0_748_3263_2800/master/3263.jpg?width=620&quality=85&auto=format&fit=max&s=8759c6794bddb364c7e1c57da311db97",
-      title: "Áo thun nam basic",
-      price: 299000,
-      color: "Trắng",
-      shipping: "Express"
-    },
-    delivery: {
-      name: "Nguyễn Văn A",
-      address: "123 Nguyễn Huệ, Q.1, TP.HCM",
-      phone: "0901234567"
-    },
-    status: "PENDING",
-    createdAt: "2024-01-15"
-  },
-];
+import { Search } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { RootState, useAppDispatch } from '../../../state/Store';
+import { getSellerOrders, updateOrderStatus } from '../../../state/seller/SellerOrderSlice';
+import { OrderStatus } from '../../../types/orderType';
 
 const statusColors: Record<OrderStatus, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800',
   PLACED: 'bg-blue-100 text-blue-800',
   CONFIRMED: 'bg-purple-100 text-purple-800',
   SHIPPED: 'bg-green-100 text-green-800',
-  DELIVERED: 'bg-red-100 text-red-800',
+  DELIVERED: 'bg-green-100 text-green-800',
   CANCELLED: 'bg-red-100 text-red-800',
 };
 
@@ -76,26 +40,133 @@ const statusText: Record<OrderStatus, string> = {
   CANCELLED: 'Đã hủy',
 };
 
-const getStatusColor = (status: OrderStatus): string => {
-  return statusColors[status] || 'bg-gray-100 text-gray-800';
-};
-
-const getStatusText = (status: OrderStatus): string => {
-  return statusText[status] || status;
-};
-
 const OrderTable: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>(orderData);
+  const dispatch = useAppDispatch();
+  const { orders, isLoading, error, updateStatus } = useSelector((state: RootState) => state.sellerOrderSlice);
+  const jwt = localStorage.getItem('sellerToken');
 
-  const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
+  // Local state to manage orders
+  const [localOrders, setLocalOrders] = useState(orders);
+  
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Update localOrders when orders from Redux change
+  useEffect(() => {
+    setLocalOrders(orders);
+  }, [orders]);
+  
+  useEffect(() => {
+    if (jwt) {
+      dispatch(getSellerOrders(jwt));
+    }
+  }, [dispatch, jwt]);
+
+  const handleStatusChange = async (orderId: number, newStatus: OrderStatus) => {
+    if (jwt) {
+      try {
+        await dispatch(updateOrderStatus({
+          orderId: orderId,
+          orderStatus: newStatus,
+          jwt
+        })).unwrap();
+
+        // Update local state immediately after successful update
+        setLocalOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === orderId 
+              ? { ...order, orderStatus: newStatus }
+              : order
+          )
+        );
+      } catch (error) {
+        console.error('Failed to update status:', error);
+      }
+    }
+  };
+
+  // Handle page change
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  // Handle rows per page change
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const filteredOrders = localOrders.filter((order) => {
+    const searchString = searchQuery.toLowerCase();
+    return (
+      order.id.toString().includes(searchString) ||
+      order.orderItems.some((item) =>
+        item.product.title.toLowerCase().includes(searchString)
+      ) ||
+      order.shippingAddress?.name.toLowerCase().includes(searchString) ||
+      order.shippingAddress?.address.toLowerCase().includes(searchString) ||
+      order.shippingAddress?.phone.includes(searchString) ||
+      statusText[order.orderStatus].toLowerCase().includes(searchString)
+    );
+  });
+
+  const paginatedOrders = filteredOrders.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  if (isLoading) {
+    return <div className="flex justify-center p-8"><CircularProgress /></div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500 p-4">{error}</div>;
+  }
+
+  const StatusChip = ({ status }: { status: OrderStatus }) => {
+    const colorClasses = statusColors[status];
+    return (
+      <div className={`inline-flex px-3 py-1 rounded-full font-medium text-sm ${colorClasses}`}>
+        {statusText[status]}
+      </div>
+    );
   };
 
   return (
     <div className="p-6">
       <h2 className="text-2xl font-semibold mb-6">Quản lý đơn hàng</h2>
+      
+      {updateStatus.isLoading && (
+        <div className="mb-4 text-blue-500">Đang cập nhật trạng thái...</div>
+      )}
+      {updateStatus.error && (
+        <div className="mb-4 text-red-500">{updateStatus.error}</div>
+      )}
+
+      {/* Search Field */}
+      <div className="mb-4">
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Tìm kiếm theo mã đơn hàng, sản phẩm, địa chỉ..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          size="small"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search className="w-5 h-5 text-gray-500" />
+              </InputAdornment>
+            ),
+          }}
+          className="bg-white"
+        />
+      </div>
+
       <TableContainer component={Paper} className="shadow-lg">
         <Table>
           <TableHead>
@@ -108,70 +179,70 @@ const OrderTable: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {orders.map((order) => (
-              <TableRow 
-                key={order.id}
-                className="hover:bg-gray-50 transition-colors"
-              >
+            {paginatedOrders.map((order) => (
+              <TableRow key={order.id} className="hover:bg-gray-50 transition-colors">
                 <TableCell className="font-medium">{order.id}</TableCell>
                 <TableCell>
-                  <div className="flex items-center space-x-4">
-                    <Avatar
-                      src={order.product.image}
-                      alt={order.product.title}
-                      className="w-16 h-16 rounded-lg"
-                      variant="square"
-                    />
-                    <div>
-                      <h3 className="font-medium">{order.product.title}</h3>
-                      <p className="text-gray-600">
-                        {order.product.price.toLocaleString('vi-VN')}đ
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-sm text-gray-500">
-                          Màu: {order.product.color}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          • {order.product.shipping}
-                        </span>
+                  {order.orderItems.map((item) => (
+                    <div key={item.id} className="flex items-center space-x-4 mb-2">
+                      <Avatar
+                        src={item.product.images[0]}
+                        alt={item.product.title}
+                        className="w-16 h-16 rounded-lg"
+                        variant="square"
+                      />
+                      <div>
+                        <h3 className="font-medium">{item.product.title}</h3>
+                        <p className="text-gray-600">
+                          {item.product.sellingPrice.toLocaleString('vi-VN')}đ
+                        </p>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </TableCell>
                 <TableCell>
                   <div>
-                    <p className="font-medium">{order.delivery.name}</p>
-                    <p className="text-gray-600">{order.delivery.address}</p>
-                    <p className="text-gray-600">{order.delivery.phone}</p>
+                    <p className="font-medium">{order.shippingAddress?.name}</p>
+                    <p className="text-gray-600">{order.shippingAddress?.address}</p>
+                    <p className="text-gray-600">{order.shippingAddress?.phone}</p>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    label={getStatusText(order.status)}
-                    className={`${getStatusColor(order.status)}`}
-                  />
+                  <StatusChip status={order.orderStatus} />
                 </TableCell>
                 <TableCell>
                   <Select
-                    value={order.status}
-                    onChange={(e: SelectChangeEvent) => 
-                      handleStatusChange(order.id, e.target.value as OrderStatus)
-                    }
+                    value={order.orderStatus}
+                    onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
                     size="small"
                     className="min-w-[150px]"
                   >
-                    <MenuItem value="PENDING">Chờ xác nhận</MenuItem>
-                    <MenuItem value="PLACED">Đang xử lý</MenuItem>
-                    <MenuItem value="CONFIRMED">Đã xác nhận</MenuItem>
-                    <MenuItem value="SHIPPED">Đã đưa đến điểm giao hàng</MenuItem>
-                    <MenuItem value="DELIVERED">Đã giao hàng</MenuItem>
-                    <MenuItem value="CANCELLED">Đã hủy</MenuItem> 
+                    {Object.entries(statusText).map(([status, text]) => (
+                      <MenuItem key={status} value={status}>
+                        {text}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+        
+        {/* Pagination */}
+        <TablePagination
+          component="div"
+          count={filteredOrders.length}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage="Số hàng mỗi trang:"
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} trong số ${count}`
+          }
+          rowsPerPageOptions={[5, 10, 25]}
+        />
       </TableContainer>
     </div>
   );

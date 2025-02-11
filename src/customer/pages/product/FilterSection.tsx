@@ -7,29 +7,35 @@ import { price } from '../../../data/filter/price';
 import { useSearchParams } from 'react-router-dom';
 
 const FilterSection = () => {
-  const [expendColor, setExpendColor] = useState(false)
-  const [searchParam, setSearchParam] = useSearchParams('')
+  const [expendColor, setExpendColor] = useState(false);
+  const [searchParam, setSearchParam] = useSearchParams();
 
   const handleColorExpand = () => {
-    setExpendColor(!expendColor)
-  }
+      setExpendColor(!expendColor);
+  };
 
   const clearAllFilters = () => {
-    searchParam.forEach((value : any, key: any) => {
-      searchParam.delete(key);
-    });
-    setSearchParam(searchParam);
-  }
+      const newSearchParams = new URLSearchParams();
+      if (searchParam.has('sort')) {
+          newSearchParams.set('sort', searchParam.get('sort')!);
+      }
+      if (searchParam.has('page')) {
+          newSearchParams.set('page', '1');
+      }
+      setSearchParam(newSearchParams);
+  };
 
-  const updateFilterParams = (e : any) => {
-    const { name, value } = e.target
-    if (value) {
-      searchParam.set(name, value);
-    } else {
-      searchParam.delete(name);
-    }
-    setSearchParam(searchParam);
-  }
+  const updateFilterParams = (e: any) => {
+      const { name, value } = e.target;
+      const newSearchParams = new URLSearchParams(searchParam);
+      if (value) {
+          newSearchParams.set(name, value);
+      } else {
+          newSearchParams.delete(name);
+      }
+      newSearchParams.set('page', '1');
+      setSearchParam(newSearchParams);
+  };
 
   return (
     <div className='-z-50 space-y-5 bg-white'>

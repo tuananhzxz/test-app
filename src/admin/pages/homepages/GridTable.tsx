@@ -1,10 +1,11 @@
 import React from 'react'
 import HomeCategory from './HomeCategory'
+import { HomeCategorySection } from '../../../types/HomeCategoryType';
 
 const GridTable = () => {
   return (
-    <div><HomeCategory/></div>
-  )
-}
+    <HomeCategory section={HomeCategorySection.GRID} />
+  );
+};
 
 export default GridTable

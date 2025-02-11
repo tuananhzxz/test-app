@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFormik } from "formik";
-import { uploadToCloud } from '../../../utils/uploadToCloud';
+import * as Yup from 'yup';
 import {
   Box,
   TextField,
@@ -19,7 +19,12 @@ import {
   Alert,
   Paper,
   Stack,
-  Container
+  Container,
+  FormHelperText,
+  Chip,
+  Checkbox,
+  ListItemText,
+  SelectChangeEvent
 } from '@mui/material';
 import {
   AddPhotoAlternate,
@@ -27,14 +32,18 @@ import {
   Save,
   Cancel
 } from '@mui/icons-material';
+import { createProduct } from '../../../state/seller/SellerProduct';
+import { useAppDispatch } from '../../../state/Store';
+import { uploadToCloud } from '../../../utils/uploadToCloud';
 
-const categoryTwo: {[key: string]: any[]} = {
+// Constants
+const categoryTwo: {[key: string]: string[]} = {
   electronic: ['Điện thoại', 'Máy tính bảng', 'Laptop', 'Máy ảnh', 'Máy quay phim', 'Phụ kiện'],
   fashion: ['Áo', 'Quần', 'Giày', 'Túi xách', 'Phụ kiện'],
   beauty: ['Mỹ phẩm', 'Chăm sóc da', 'Chăm sóc tóc', 'Trang điểm', 'Nước hoa'],
 };
 
-const categoryThree: {[key: string]: any[]} = {
+const categoryThree: {[key: string]: string[]} = {
   electronic: ['Điện thoại 1', 'Máy tính bảng 1', 'Laptop 1', 'Máy ảnh 1', 'Máy quay phim 1', 'Phụ kiện 1'],
   fashion: ['Áo 1', 'Quần 1', 'Giày 1', 'Túi xách 1', 'Phụ kiện 1'],
   beauty: ['Mỹ phẩm 1', 'Chăm sóc da 1', 'Chăm sóc tóc 1', 'Trang điểm 1', 'Nước hoa 1'],
@@ -50,7 +59,37 @@ const sizes = [
 
 const mainCategories = ['electronic', 'fashion', 'beauty'];
 
-const AddProduct = () => {
+const validationSchema = Yup.object({
+  title: Yup.string().required('Vui lòng nhập tên sản phẩm'),
+  description: Yup.string().required('Vui lòng nhập mô tả sản phẩm'),
+  mrpPrice: Yup.number().required('Vui lòng nhập giá niêm yết').positive('Giá phải lớn hơn 0'),
+  sellingPrice: Yup.number().required('Vui lòng nhập giá bán')
+    .positive('Giá phải lớn hơn 0')
+    .max(Yup.ref('mrpPrice'), 'Giá bán không được cao hơn giá niêm yết'),
+  quantity: Yup.number().required('Vui lòng nhập số lượng').integer('Số lượng phải là số nguyên').min(0, 'Số lượng không được âm'),
+  category: Yup.string().required('Vui lòng chọn thể loại chính'),
+  selectedColors: Yup.array().min(1, 'Vui lòng chọn ít nhất 1 màu sắc'),
+  selectedSizes: Yup.array().min(1, 'Vui lòng chọn ít nhất 1 kích cỡ'),
+  images: Yup.array().min(1, 'Vui lòng thêm ít nhất 1 ảnh')
+});
+
+interface FormValues {
+  title: string;
+  description: string;
+  mrpPrice: string;
+  sellingPrice: string;
+  quantity: string;
+  color: string;
+  selectedColors: string[];
+  images: string[];
+  category: string;
+  category2: string;
+  category3: string;
+  sizes: string;
+  selectedSizes: string[];
+}
+const AddProduct: React.FC = () => {
+  const dispatch = useAppDispatch();
   const [uploadImage, setUploadImage] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -58,26 +97,68 @@ const AddProduct = () => {
   const [selectedCategory2Options, setSelectedCategory2Options] = useState<string[]>([]);
   const [selectedCategory3Options, setSelectedCategory3Options] = useState<string[]>([]);
 
+  const initialValues: FormValues = {
+    title: "",
+    description: "",
+    mrpPrice: "",
+    sellingPrice: "",
+    quantity: "",
+    color: "",
+    selectedColors: [],
+    images: [],
+    category: "",
+    category2: "",
+    category3: "",
+    sizes: "",
+    selectedSizes: []
+  };
+
   const formik = useFormik({
-    initialValues: {
-      title: "",
-      description: "",
-      mrpPrice: "",
-      sellingPrice: "",
-      quantity: "",
-      color: "",
-      images: [],
-      category: "",
-      category2: "",
-      category3: "",
-      sizes: ""
+    initialValues,
+    validationSchema,
+    onSubmit: async (values) => {
+      try {
+        const jwt = localStorage.getItem('sellerToken'); // Đổi từ 'jwt' thành 'sellerToken'
+        if (!jwt) {
+          throw new Error('Không tìm thấy token xác thực');
+        }
+
+        // Format dữ liệu theo CreateProductRequest
+        const productData = {
+          title: values.title,
+          description: values.description,
+          mrpPrice: parseInt(values.mrpPrice),
+          sellingPrice: parseInt(values.sellingPrice),
+          quantity: parseInt(values.quantity),
+          color: values.selectedColors.join(','),
+          images: values.images,
+          category: values.category,
+          category2: values.category2,
+          category3: values.category3,
+          sizes: values.selectedSizes.join(',')
+        };
+
+        // Dispatch action createProduct
+        const result = await dispatch(createProduct({ 
+          request: productData, 
+          jwt 
+        })).unwrap(); // Sử dụng unwrap() để xử lý lỗi tốt hơn
+
+        // Xử lý kết quả thành công
+        setSnackbarMessage('Sản phẩm đã được tạo thành công!');
+        setSnackbarSeverity('success');
+        formik.resetForm();
+        
+      } catch (error: any) {
+        // Xử lý lỗi
+        console.error('Error creating product:', error);
+        setSnackbarMessage(error.message || 'Có lỗi xảy ra khi tạo sản phẩm');
+        setSnackbarSeverity('error');
+      } finally {
+        setSnackbarOpen(true);
+      }
     },
-    onSubmit: (values) => {
-      console.log(values);
-      setSnackbarMessage('Sản phẩm đã được lưu thành công!');
-      setSnackbarOpen(true);
-    },
-  });
+});
 
   useEffect(() => {
     if (formik.values.category) {
@@ -94,6 +175,18 @@ const AddProduct = () => {
     }
   }, [formik.values.category2]);
 
+  const handleColorChange = (event: SelectChangeEvent<string[]>) => {
+    const values = event.target.value as string[];
+    formik.setFieldValue('selectedColors', values);
+    formik.setFieldValue('color', values.join(','));
+  };
+
+  const handleSizeChange = (event: SelectChangeEvent<string[]>) => {
+    const values = event.target.value as string[];
+    formik.setFieldValue('selectedSizes', values);
+    formik.setFieldValue('sizes', values.join(','));
+  };
+
   const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const files = event.target.files;
@@ -101,7 +194,7 @@ const AddProduct = () => {
 
       const file = files[0];
       
-      // Kiểm tra kích thước file (ví dụ: giới hạn 5MB)
+      // Kiểm tra kích thước file (5MB)
       if (file.size > 5 * 1024 * 1024) {
         setSnackbarMessage('File quá lớn. Vui lòng chọn file nhỏ hơn 5MB');
         setSnackbarSeverity('error');
@@ -119,14 +212,9 @@ const AddProduct = () => {
 
       setUploadImage(true);
       
-      // Tạo preview URL trước khi upload
-      const previewUrl = URL.createObjectURL(file);
-      
       try {
         const uploadedUrl = await uploadToCloud(file);
-        console.log('Uploaded URL:', uploadedUrl);
         
-        // Kiểm tra URL trả về có hợp lệ không
         if (!uploadedUrl || typeof uploadedUrl !== 'string') {
           throw new Error('Invalid upload response');
         }
@@ -139,9 +227,6 @@ const AddProduct = () => {
         console.error('Upload error:', error);
         setSnackbarMessage('Lỗi khi tải ảnh lên!');
         setSnackbarSeverity('error');
-        
-        // Nếu upload thất bại, vẫn hiển thị preview
-        formik.setFieldValue('images', [...formik.values.images, previewUrl]);
       }
 
       setSnackbarOpen(true);
@@ -161,7 +246,6 @@ const AddProduct = () => {
     formik.setFieldValue('images', newImages);
   };
 
-  // Phần hiển thị ảnh trong form
   const ImagePreview = () => (
     <Paper sx={{ p: 2, mt: 2 }}>
       <Typography variant="h6" gutterBottom>
@@ -186,7 +270,6 @@ const AddProduct = () => {
         {uploadImage && <CircularProgress size={24} />}
       </Stack>
 
-      {/* Image Grid */}
       <Grid container spacing={2} sx={{ mt: 2 }}>
         {formik.values.images.map((image, index) => (
           <Grid item xs={12} sm={6} md={4} key={index}>
@@ -194,7 +277,7 @@ const AddProduct = () => {
               sx={{
                 position: 'relative',
                 width: '100%',
-                paddingTop: '100%', // 1:1 Aspect Ratio
+                paddingTop: '100%',
                 backgroundColor: '#f5f5f5',
                 borderRadius: 1,
                 overflow: 'hidden',
@@ -214,7 +297,7 @@ const AddProduct = () => {
                 }}
                 onError={(e: any) => {
                   e.target.onerror = null;
-                  e.target.src = 'placeholder-image-url'; // URL ảnh placeholder khi load thất bại
+                  e.target.src = '/placeholder-image.jpg';
                 }}
               />
               <IconButton
@@ -241,6 +324,10 @@ const AddProduct = () => {
           Số lượng ảnh: {formik.values.images.length}
         </Typography>
       )}
+      
+      {formik.touched.images && formik.errors.images && (
+        <FormHelperText error>{formik.errors.images}</FormHelperText>
+      )}
     </Paper>
   );
 
@@ -255,7 +342,6 @@ const AddProduct = () => {
 
             <form onSubmit={formik.handleSubmit}>
               <Grid container spacing={3}>
-                {/* Basic Info */}
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
@@ -263,6 +349,8 @@ const AddProduct = () => {
                     name="title"
                     value={formik.values.title}
                     onChange={formik.handleChange}
+                    error={formik.touched.title && Boolean(formik.errors.title)}
+                    helperText={formik.touched.title && formik.errors.title}
                   />
                 </Grid>
 
@@ -275,10 +363,11 @@ const AddProduct = () => {
                     rows={4}
                     value={formik.values.description}
                     onChange={formik.handleChange}
+                    error={formik.touched.description && Boolean(formik.errors.description)}
+                    helperText={formik.touched.description && formik.errors.description}
                   />
                 </Grid>
 
-                {/* Pricing */}
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
@@ -287,6 +376,8 @@ const AddProduct = () => {
                     type="number"
                     value={formik.values.mrpPrice}
                     onChange={formik.handleChange}
+                    error={formik.touched.mrpPrice && Boolean(formik.errors.mrpPrice)}
+                    helperText={formik.touched.mrpPrice && formik.errors.mrpPrice}
                   />
                 </Grid>
 
@@ -298,17 +389,35 @@ const AddProduct = () => {
                     type="number"
                     value={formik.values.sellingPrice}
                     onChange={formik.handleChange}
+                    error={formik.touched.sellingPrice && Boolean(formik.errors.sellingPrice)}
+                    helperText={formik.touched.sellingPrice && formik.errors.sellingPrice}
                   />
                 </Grid>
 
-                {/* Categories */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Số lượng"
+                    name="quantity"
+                    type="number"
+                    value={formik.values.quantity}
+                    onChange={formik.handleChange}
+                    error={formik.touched.quantity && Boolean(formik.errors.quantity)}
+                    helperText={formik.touched.quantity && formik.errors.quantity}
+                  />
+                </Grid>
+
                 <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
+                  <FormControl 
+                    fullWidth
+                    error={formik.touched.category && Boolean(formik.errors.category)}
+                  >
                     <InputLabel>Thể loại chính</InputLabel>
                     <Select
                       value={formik.values.category}
                       label="Thể loại chính"
-                      onChange={(e) => formik.setFieldValue('category', e.target.value)}
+                      name="category"
+                      onChange={formik.handleChange}
                     >
                       {mainCategories.map((category) => (
                         <MenuItem key={category} value={category}>
@@ -316,16 +425,23 @@ const AddProduct = () => {
                         </MenuItem>
                       ))}
                     </Select>
+                    {formik.touched.category && formik.errors.category && (
+                      <FormHelperText>{formik.errors.category}</FormHelperText>
+                    )}
                   </FormControl>
                 </Grid>
 
                 <Grid item xs={12} md={4}>
-                  <FormControl fullWidth disabled={!formik.values.category}>
+                  <FormControl 
+                    fullWidth 
+                    disabled={!formik.values.category}
+                  >
                     <InputLabel>Thể loại phụ 1</InputLabel>
                     <Select
                       value={formik.values.category2}
                       label="Thể loại phụ 1"
-                      onChange={(e) => formik.setFieldValue('category2', e.target.value)}
+                      name="category2"
+                      onChange={formik.handleChange}
                     >
                       {selectedCategory2Options.map((category) => (
                         <MenuItem key={category} value={category}>
@@ -337,12 +453,16 @@ const AddProduct = () => {
                 </Grid>
 
                 <Grid item xs={12} md={4}>
-                  <FormControl fullWidth disabled={!formik.values.category2}>
+                  <FormControl 
+                    fullWidth 
+                    disabled={!formik.values.category2}
+                  >
                     <InputLabel>Thể loại phụ 2</InputLabel>
                     <Select
                       value={formik.values.category3}
                       label="Thể loại phụ 2"
-                      onChange={(e) => formik.setFieldValue('category3', e.target.value)}
+                      name="category3"
+                      onChange={formik.handleChange}
                     >
                       {selectedCategory3Options.map((category) => (
                         <MenuItem key={category} value={category}>
@@ -353,53 +473,84 @@ const AddProduct = () => {
                   </FormControl>
                 </Grid>
 
-                {/* Variants */}
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Màu sắc</InputLabel>
-                    <Select
-                      value={formik.values.color}
-                      label="Màu sắc"
-                      onChange={(e) => formik.setFieldValue('color', e.target.value)}
-                    >
-                      {colors.map((color) => (
-                        <MenuItem key={color} value={color}>
-                          {color}
-                        </MenuItem>
+              <FormControl 
+                fullWidth
+                error={formik.touched.selectedColors && Boolean(formik.errors.selectedColors)}
+              >
+                <InputLabel>Màu sắc</InputLabel>
+                <Select
+                  multiple
+                  value={formik.values.selectedColors}
+                  label="Màu sắc"
+                  onChange={handleColorChange}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {(selected as string[]).map((value) => (
+                        <Chip key={value} label={value} />
                       ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+                    </Box>
+                  )}
+                >
+                  {colors.map((color) => (
+                    <MenuItem key={color} value={color}>
+                      <Checkbox checked={formik.values.selectedColors.indexOf(color) > -1} />
+                      <ListItemText primary={color} />
+                    </MenuItem>
+                  ))}
+                </Select>
+                {formik.touched.selectedColors && formik.errors.selectedColors && (
+                  <FormHelperText>{formik.errors.selectedColors as string}</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
 
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Kích cỡ</InputLabel>
-                    <Select
-                      value={formik.values.sizes}
-                      label="Kích cỡ"
-                      onChange={(e) => formik.setFieldValue('sizes', e.target.value)}
-                    >
-                      {sizes.map((size) => (
-                        <MenuItem key={size} value={size}>
-                          {size}
-                        </MenuItem>
+            {/* Kích cỡ - Multiple Select */}
+            <Grid item xs={12} md={6}>
+              <FormControl 
+                fullWidth
+                error={formik.touched.selectedSizes && Boolean(formik.errors.selectedSizes)}
+              >
+                <InputLabel>Kích cỡ</InputLabel>
+                <Select
+                  multiple
+                  value={formik.values.selectedSizes}
+                  label="Kích cỡ"
+                  onChange={handleSizeChange}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {(selected as string[]).map((value) => (
+                        <Chip key={value} label={value} />
                       ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                {/* Images */}
+                    </Box>
+                  )}
+                >
+                  {sizes.map((size) => (
+                    <MenuItem key={size} value={size}>
+                      <Checkbox checked={formik.values.selectedSizes.indexOf(size) > -1} />
+                      <ListItemText primary={size} />
+                    </MenuItem>
+                  ))}
+                </Select>
+                {formik.touched.selectedSizes && formik.errors.selectedSizes && (
+                  <FormHelperText>{formik.errors.selectedSizes as string}</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
                 <Grid item xs={12}>
-                <ImagePreview />
-              </Grid>
+                  <ImagePreview />
+                </Grid>
 
-                {/* Submit Buttons */}
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                     <Button
                       variant="outlined"
                       startIcon={<Cancel />}
-                      onClick={() => formik.resetForm()}
+                      onClick={() => {
+                        formik.resetForm();
+                        setSelectedCategory2Options([]);
+                        setSelectedCategory3Options([]);
+                      }}
                     >
                       Hủy
                     </Button>
@@ -408,6 +559,7 @@ const AddProduct = () => {
                       variant="contained"
                       color="primary"
                       startIcon={<Save />}
+                      disabled={!formik.isValid || formik.isSubmitting}
                     >
                       Lưu sản phẩm
                     </Button>
@@ -423,10 +575,12 @@ const AddProduct = () => {
         open={snackbarOpen}
         autoHideDuration={6000}
         onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert
           onClose={() => setSnackbarOpen(false)}
-          severity="success"
+          severity={snackbarSeverity}
+          variant="filled"
           sx={{ width: '100%' }}
         >
           {snackbarMessage}

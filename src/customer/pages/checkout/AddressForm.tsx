@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Grid, TextField, Button, Typography } from "@mui/material";
 import { useFormik } from "formik";
 import * as Yup from 'yup';
+import { createOrder } from '../../../state/customer/OrderSlice';
+import { useAppDispatch } from '../../../state/Store';
+
 
 interface AddressFormProps {
     onClose: () => void;
+    paymentMethod: string;
 }
 
-const AddressForm: React.FC<AddressFormProps> = ({ onClose }) => {
+const AddressForm: React.FC<AddressFormProps> = ({ onClose, paymentMethod }) => {
+    const dispatch = useAppDispatch();
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const formik = useFormik({
         initialValues: {
             name: '',
@@ -27,8 +33,26 @@ const AddressForm: React.FC<AddressFormProps> = ({ onClose }) => {
             state: Yup.string().required('Bắt buộc'),
             locality: Yup.string().required('Bắt buộc')
         }),
-        onSubmit: (values) => {
-            console.log(values);
+        onSubmit: async (values) => {
+            if (isSubmitting) return;
+            
+            setIsSubmitting(true);
+            try {
+                const response = await dispatch(createOrder({ 
+                    shippingAddress: values, 
+                    paymentMethod 
+                }));
+                
+                if (response.payload?.payment_link_url) {
+                    window.location.href = response.payload.payment_link_url;
+                }
+                onClose();
+            } catch (error : any) {
+                console.error('Address creation error:', error); 
+                alert(error.message || 'Không thể thêm địa chỉ');
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     });
 
@@ -118,9 +142,15 @@ const AddressForm: React.FC<AddressFormProps> = ({ onClose }) => {
                         />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        <Button type="submit" variant="contained" color="primary" fullWidth>
-                            Gửi thông tin
-                        </Button>
+                    <Button 
+                        type="submit" 
+                        variant="contained" 
+                        color="primary" 
+                        fullWidth 
+                        disabled={isSubmitting}
+                     >
+                        {isSubmitting ? 'Đang gửi...' : 'Gửi thông tin'}
+                    </Button>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                         <Button type="button" variant="outlined" color="secondary" fullWidth onClick={onClose}>

@@ -1,15 +1,14 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import { HomeCategoryType } from '../../../../types/HomeCategoryType';
 
-interface imageCard {
-    src: string;
-    title: string;
-    description: string;
-    span: string; 
-  
+interface ImageCardProps {
+  src: string;
+  title: string;
+  span?: string;
 }
 
-const ImageCard = ({ src, title, description, span } : imageCard) => {
+const ImageCard = ({ src, title, span }: ImageCardProps) => {
   return (
     <Box
       className={`relative group overflow-hidden rounded-lg ${span}`}
@@ -26,12 +25,12 @@ const ImageCard = ({ src, title, description, span } : imageCard) => {
         alt={title}
         loading="lazy"
       />
-      
+
       {/* Overlay Gradient */}
       <Box
         className="absolute inset-0 bg-gradient-to-b from-transparent to-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
       />
-      
+
       {/* Content */}
       <Box
         className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"
@@ -43,61 +42,36 @@ const ImageCard = ({ src, title, description, span } : imageCard) => {
         >
           {title}
         </Typography>
-        <Typography
-          variant="body2"
-          className="text-gray-200"
-          sx={{ textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}
-        >
-          {description}
-        </Typography>
       </Box>
     </Box>
   );
 };
 
-const CategoryGrid = () => {
-  const categories = [
-    {
-      src: "https://taimienphi.vn/tmp/cf/aut/hinh-anh-cute-dep-de-thuong-nhat-1.jpg",
-      title: "Thời trang",
-      description: "Khám phá xu hướng mới nhất",
-      span: "col-span-3 row-span-12"
-    },
-    {
-      src: "https://taimienphi.vn/tmp/cf/aut/hinh-anh-cute-dep-de-thuong-nhat-1.jpg",
-      title: "Phụ kiện",
-      description: "Hoàn thiện phong cách của bạn",
-      span: "col-span-3 row-span-6"
-    },
-    {
-      src: "https://i.imgur.com/LdisWqLh.jpg",
-      title: "Giày dép",
-      description: "Bước đi tự tin",
-      span: "col-span-2 row-span-6"
-    },
-    {
-      src: "https://taimienphi.vn/tmp/cf/aut/hinh-anh-cute-dep-de-thuong-nhat-1.jpg",
-      title: "Đồ điện tử",
-      description: "Công nghệ hiện đại",
-      span: "col-span-4 row-span-12"
-    },
-    {
-      src: "https://i.imgur.com/LdisWqLh.jpg",
-      title: "Mỹ phẩm",
-      description: "Tỏa sáng mỗi ngày",
-      span: "col-span-3 row-span-6"
-    },
-    {
-      src: "https://i.imgur.com/LdisWqLh.jpg",
-      title: "Đồ gia dụng",
-      description: "Tiện ích cho gia đình",
-      span: "col-span-2 row-span-6"
-    }
+// Helper function to get span based on index
+const getSpanClass = (index: number): string => {
+  const spanClasses = [
+    "col-span-3 row-span-12", 
+    "col-span-3 row-span-6", 
+    "col-span-2 row-span-6", 
+    "col-span-4 row-span-12",
+    "col-span-3 row-span-6", 
+    "col-span-2 row-span-6" 
   ];
+  return spanClasses[index] || "";
+};
+
+const CategoryGrid = ({ item }: { item: HomeCategoryType[] }) => {
+  const categories = item
+    .slice(8, 14)
+    .filter(category => category.section.toString() === "GRID")
+    .map((category, index) => ({
+      src: category.image || "",
+      title: category.name || "",
+      span: getSpanClass(index)
+    }));
 
   return (
     <Box className="container mx-auto px-4 py-8">
-
       <Box
         className="grid gap-4 grid-cols-12 grid-rows-12"
         sx={{
@@ -119,7 +93,6 @@ const CategoryGrid = () => {
             key={index}
             src={category.src}
             title={category.title}
-            description={category.description}
             span={category.span}
           />
         ))}
