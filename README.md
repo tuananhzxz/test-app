@@ -1,5 +1,6 @@
 Source back-end : https://github.com/tuananhzxz/back-end-e
-
+Set up database in application.properties
+Edit: spring.jpa.hibernate.ddl-auto=create
 ### `npm start`
 
 Runs the app in the development mode.\
